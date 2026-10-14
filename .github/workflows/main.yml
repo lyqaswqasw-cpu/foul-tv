@@ -1,0 +1,72 @@
+name: FOUL TV Direct Stream
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      stream_url:
+        description: 'رابط البث الأصلي (m3u8)'
+        required: true
+        default: 'http://silka.m3um9xplus.org:2052/live/10375497945304/24779171855387/677066.m3u8'
+      duration_minutes:
+        description: 'مدة البث بالدقائق'
+        required: true
+        default: '180'
+
+jobs:
+  live_stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: 1. تثبيت الأدوات
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core python3
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
+          chmod +x cloudflared
+          mkdir -p /tmp/hls/live
+
+      - name: 2. تشغيل البث واستخراج الرابط
+        run: |
+          cat << 'EOF' > /tmp/hls/server.py
+          import http.server, socketserver, os
+          os.chdir('/tmp/hls')
+          class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
+              def end_headers(self):
+                  self.send_header('Access-Control-Allow-Origin', '*')
+                  self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+                  super().end_headers()
+              def log_message(self, format, *args):
+                  pass
+          socketserver.TCPServer.allow_reuse_address = True
+          httpd = socketserver.TCPServer(("", 8080), CORSRequestHandler)
+          httpd.serve_forever()
+          EOF
+          
+          python3 /tmp/hls/server.py &
+          ./cloudflared tunnel --url http://localhost:8080 > tunnel.log 2>&1 &
+          
+          sleep 6
+          TUNNEL_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+          
+          echo "===================================================="
+          echo "✅ رابط البث الجديد الجاهز مع شعار FOUL TV هو:"
+          echo "$TUNNEL_URL/live/index.m3u8"
+          echo "===================================================="
+
+          STREAM_URL="${{ github.event.inputs.stream_url || 'http://silka.m3um9xplus.org:2052/live/10375497945304/24779171855387/677066.m3u8' }}"
+          DURATION=$(( ${{ github.event.inputs.duration_minutes || 180 }} * 60 ))
+
+          ffmpeg -loglevel warning -re \
+            -user_agent "VLC/3.0.18 LibVLC/3.0.18" \
+            -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+            -i "$STREAM_URL" \
+            -t $DURATION \
+            -vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='  FOUL TV  ':fontcolor=white:fontsize=h*0.036:box=1:boxcolor=black@1:boxborderw=10:x=w-tw-(w*0.038):y=h*0.055" \
+            -c:v libx264 -preset ultrafast -tune zerolatency -b:v 2500k \
+            -c:a copy \
+            -f hls \
+            -hls_time 3 \
+            -hls_list_size 6 \
+            -hls_flags delete_segments \
+            /tmp/hls/live/index.m3u8
