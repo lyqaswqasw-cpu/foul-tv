@@ -25,15 +25,15 @@
       object-fit: contain;
     }
 
-    /* مربع FOUL TV الأسود المضبوط على حجم ومكان شعار beIN SPORTS */
+    /* مربع FOUL TV الأسود المضبوط على مكان شعار القناة في أعلى اليمين */
     .foul-watermark {
       position: absolute;
-      top: 6.5%;          /* نازل قليلاً من الأعلى ليغطي الشعار بالضبط */
-      right: 4.2%;        /* في جهة اليمين على مكان شعار القناة */
+      top: 6.5%;
+      right: 4.2%;
       background-color: #000000;
       color: #ffffff;
-      padding: 5px 18px;  /* عرض وارتفاع المستطيل الأسود */
-      font-size: clamp(13px, 2.2vw, 20px); /* حجم خط متوسط متناسق مع الشاشة */
+      padding: 5px 18px;
+      font-size: clamp(13px, 2.2vw, 20px);
       font-weight: 900;
       letter-spacing: 1.5px;
       border-radius: 3px;
@@ -69,7 +69,7 @@
   <script>
     const video = document.getElementById('video');
     const wrapper = document.getElementById('player-wrapper');
-    const streamUrl = 'http://silka.m3um9xplus.org:2052/live/10375497945304/24779171855387/677066.m3u8';
+    const streamUrl = 'https://raw.githubusercontent.com/kianezidi/alive/refs/heads/main/1.m3u8';
 
     if (Hls.isSupported()) {
       const hls = new Hls();
